@@ -1,0 +1,6 @@
+/build
+/test
+.DS_Store
+main.build/
+main.dist/
+main.onefile-build/
