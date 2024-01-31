@@ -1,3 +1,4 @@
+from re import match
 import tkinter.messagebox
 import tkinter.filedialog
 import tkinter
@@ -6,6 +7,8 @@ import ffmpeg
 from tqdm import tqdm
 from shutil import which
 from platform import system
+
+rePattern = "\d{2}:\d{2}:\d{2}"
 
 # ffmpegがインストールされているか確認
 if which("ffmpeg") == None:
@@ -75,7 +78,7 @@ mode = intInput(
      "4 : .mp4 -> .mov",
      "5 : .mp3 -> .wav",
      "6 : リサイズ・fps変更(映像)",
-     "7 : 動画切り出し(映像)"], [0, 6])
+     "7 : 動画切り出し(映像)"], [0, 7])
 
 # 動画の各種変更を指定
 videoFPS = videoHeight = videoWidth = timeToCut = 0
@@ -85,7 +88,11 @@ if mode in [0, 2, 4, 6]:
     videoFPS = intInput(["変換後のFPSを入力(0または空白で変換なし)"], [1, 100])
 
 if mode == 7:
-    timeToCut = intInput(["切り出す時間を入力(秒)"], [1, 1000000])
+    while True:
+        timeToCut = input("秒数を指定(00:00:00形式で) ->  ")
+        if match(rePattern, timeToCut) != None:
+            break
+        print("指定の形式で入力してください。")
 
 # ファイル選択ダイアログの表示
 root = tkinter.Tk()
@@ -132,7 +139,7 @@ for file in tqdm(fileToConvert):
     probe = ffmpeg.probe(file)
 
     # 一切変更がない場合は変換しない
-    if mode not in [1, 3, 5] and videoFPS == videoHeight == videoWidth == 0:
+    if mode == 6 and videoFPS == videoHeight == videoWidth == 0:
         break
 
     # 映像ファイルの情報を取得
@@ -156,7 +163,7 @@ for file in tqdm(fileToConvert):
          .input(file)
          .output(convertFName(file, mode),
                  s=f"{videoWidth}:{videoHeight}",)
-         .run(overwrite_output=True, quit=True))
+         .run(overwrite_output=True, quiet=True))
 
     elif mode in [1, 3, 5]:
         (ffmpeg
@@ -183,8 +190,10 @@ for file in tqdm(fileToConvert):
     elif mode in [7]:
         (ffmpeg
          .input(file)
-         .output(convertFName(file, mode), ss=timeToCut, flames=1).
+         .filter('fps', fps=1, round='up')
+         .output(convertFName(file, mode), ss=timeToCut, t=timeToCut).
          run(
-             overwrite_output=True, quiet=True))
+             overwrite_output=True, quiet=True
+         ))
 
 print("変換が完了しました。")
